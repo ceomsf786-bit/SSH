@@ -1,7 +1,7 @@
 (() => {
   const STUDENTS = {
-    "RG 11": 11,
-    "IS 10": 10,
+    "RG11": 11,
+    "IS10": 10,
     "AV09": 9,
     "MD09": 9,
     "FS06": 6
@@ -29,6 +29,10 @@
   };
 
   const UPLOAD_KEY = "SNT-T4-HOMEWORK-2026-ENK";
+  const params = new URLSearchParams(window.location.search);
+  const status = String(params.get("status") || "").trim();
+  const returnedStudent = String(params.get("student") || "").trim();
+  const returnedMessage = String(params.get("message") || "").trim();
   const $ = (id) => document.getElementById(id);
 
   const form = $("submissionForm");
@@ -50,6 +54,37 @@
   init();
 
   function init() {
+    if (status === "success") {
+      form.classList.add("hidden");
+      gradeBadge.textContent = "Submitted";
+      resultCard.classList.remove("hidden", "error");
+      resultCard.innerHTML = `
+        <h2>✅ Homework submitted</h2>
+        <p><strong>${escapeHtml(returnedStudent || "Student")}</strong>, your homework was sent successfully.</p>
+        <p>You can close this page now.</p>
+      `;
+      return;
+    }
+
+    if (status === "duplicate") {
+      form.classList.add("hidden");
+      gradeBadge.textContent = "Already submitted";
+      resultCard.classList.remove("hidden");
+      resultCard.classList.add("error");
+      resultCard.innerHTML = `
+        <h2>Already submitted</h2>
+        <p>This homework has already been handed in.</p>
+        <p>Please ask your teacher if a reset is needed.</p>
+      `;
+      return;
+    }
+
+    if (status === "error") {
+      resultCard.classList.remove("hidden");
+      resultCard.classList.add("error");
+      resultCard.innerHTML = `<h2>Submission not completed</h2><p>${escapeHtml(returnedMessage || "Please try again.")}</p>`;
+    }
+
     studentSelect.addEventListener("change", handleStudentChange);
     imageInput.addEventListener("change", renderSelectedImages);
     form.addEventListener("submit", handleSubmit);
