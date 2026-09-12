@@ -2,6 +2,7 @@ const SUPABASE_URL = "https://gbezoogwevzctjxemuif.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_XVPEm3NnzSKOxn0OM3Iv5w_iNc0_Ihu";
 const CONFIG_NEEDED = SUPABASE_URL.includes("PASTE_") || SUPABASE_PUBLISHABLE_KEY.includes("PASTE_");
 const sb = CONFIG_NEEDED ? null : supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+window.sb = sb;
 
 const state = { grade:null, student:null, subjects:[], selectedSubject:null, quizzes:[], resourceLinks:[], resourceTerm:"", personalLinks:[], messages:[], progress:[], subjectScoreSummary:[], revisionControls:[], practiceWork:[], selectedQuiz:null, questions:[], answers:{}, qIndex:0, leaderboardScope:"grade", quizStartedAt:null, quizDeadlineAt:null, quizTimerInterval:null, timerExpired:false, quizSubmitting:false, reviewFilter:"all", quizFilters:{term:"",topic:"",unit:""}, previewMode:false };
 const $ = (id) => document.getElementById(id);
