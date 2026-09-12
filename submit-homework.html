@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SNT Homework Submission</title>
   <link rel="stylesheet" href="assets/css/homework-submit.css">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="assets/js/config.js"></script>
   <script src="assets/js/homework-submit-config.js"></script>
   <script defer src="assets/js/homework-submit.js"></script>
 </head>
@@ -18,67 +16,75 @@
         <div class="brand-mark">SNT</div>
         <div>
           <h1>Submit Homework</h1>
-          <p class="muted">Choose your name, homework date, and send your completed work.</p>
+          <p class="muted">Choose your name, subject and homework week. Type answers, add images, or use both.</p>
         </div>
       </div>
 
-      <div id="contextBox" class="context-box hidden">
-        <span id="gradeBadge" class="context-pill"></span>
-        <span id="subjectBadge" class="context-pill"></span>
-        <span id="taskBadge" class="context-pill hidden"></span>
+      <div class="context-box">
+        <span class="context-pill">Term 4</span>
+        <span id="gradeBadge" class="context-pill">Choose learner</span>
       </div>
 
-      <div id="setupError" class="notice error hidden"></div>
       <div id="resultCard" class="result-card hidden"></div>
 
-      <form id="submissionForm" class="submission-form hidden" novalidate>
+      <form id="submissionForm" class="submission-form" novalidate>
         <label>
           Student name
           <select id="studentSelect" required>
-            <option value="">Loading students...</option>
+            <option value="">Choose your name</option>
+            <option value="RG 11">RG 11</option>
+            <option value="IS 10">IS 10</option>
+            <option value="AV09">AV09</option>
+            <option value="MD09">MD09</option>
+            <option value="FS06">FS06</option>
           </select>
         </label>
 
         <label>
-          Date homework was given
-          <input id="activityDate" type="date" required>
+          Subject
+          <select id="subjectSelect" required disabled>
+            <option value="">Choose your name first</option>
+          </select>
         </label>
 
-        <fieldset>
-          <legend>How are you submitting?</legend>
-          <div class="mode-grid">
-            <label class="mode-option">
-              <input type="radio" name="submissionMode" value="images" checked>
-              <span>📷 Photos / images</span>
-            </label>
-            <label class="mode-option">
-              <input type="radio" name="submissionMode" value="typed">
-              <span>⌨️ Type answers</span>
-            </label>
-          </div>
-        </fieldset>
+        <label>
+          Homework activity
+          <select id="weekSelect" required>
+            <option value="">Choose week</option>
+            <option>Week 1</option>
+            <option>Week 2</option>
+            <option>Week 3</option>
+            <option>Week 4</option>
+            <option>Week 5</option>
+            <option>Week 6</option>
+            <option>Week 7</option>
+            <option>Week 8</option>
+            <option>Week 9</option>
+            <option>Week 10</option>
+          </select>
+        </label>
 
-        <section id="imagePanel" class="input-panel">
+        <section class="input-panel">
           <label>
-            Add clear photos of your completed work
-            <input id="imageInput" type="file" accept="image/jpeg,image/png" multiple>
+            Type answers or notes <span class="optional">(optional)</span>
+            <textarea id="typedAnswers" rows="10" placeholder="Type your answers here. Keep question numbers clear, for example:&#10;&#10;1. ...&#10;2. ..."></textarea>
           </label>
-          <p class="help">JPG or PNG only. You can choose several images.</p>
-          <div id="imageList" class="file-list"></div>
         </section>
 
-        <section id="typedPanel" class="input-panel hidden">
+        <section class="input-panel">
           <label>
-            Type your answers
-            <textarea id="typedAnswers" rows="14" placeholder="Type your answers here. Keep question numbers clear, for example:&#10;&#10;1. ...&#10;2. ..."></textarea>
+            Add homework images <span class="optional">(optional)</span>
+            <input id="imageInput" type="file" accept="image/jpeg,image/png" multiple>
           </label>
+          <p class="help">JPG or PNG only. You may submit text, images, or both together.</p>
+          <div id="imageList" class="file-list"></div>
         </section>
 
         <div id="formMessage" class="notice hidden"></div>
         <button id="submitBtn" class="submit-btn" type="submit">Submit homework</button>
       </form>
 
-      <footer>SNT Homework Submission • MVP 1.0</footer>
+      <footer>SNT Homework Submission • MVP 1.1</footer>
     </section>
   </main>
 </body>
