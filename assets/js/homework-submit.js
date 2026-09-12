@@ -40,6 +40,7 @@
   const subjectSelect = $("subjectSelect");
   const weekSelect = $("weekSelect");
   const typedAnswers = $("typedAnswers");
+  const cameraInput = $("cameraInput");
   const imageInput = $("imageInput");
   const imageList = $("imageList");
   const submitBtn = $("submitBtn");
@@ -50,6 +51,7 @@
   const maxImages = Number(window.SNT_HOMEWORK_MAX_IMAGES || 8);
   const maxImageBytes = Number(window.SNT_HOMEWORK_MAX_IMAGE_MB || 5) * 1024 * 1024;
   const maxPdfBytes = Number(window.SNT_HOMEWORK_MAX_PDF_MB || 10) * 1024 * 1024;
+  let selectedFiles = [];
 
   init();
 
@@ -86,7 +88,8 @@
     }
 
     studentSelect.addEventListener("change", handleStudentChange);
-    imageInput.addEventListener("change", renderSelectedImages);
+    cameraInput.addEventListener("change", () => addSelectedImages(cameraInput));
+    imageInput.addEventListener("change", () => addSelectedImages(imageInput));
     form.addEventListener("submit", handleSubmit);
   }
 
@@ -108,11 +111,37 @@
       subjects.map((subject) => `<option value="${escapeHtml(subject)}">${escapeHtml(subject)}</option>`).join("");
   }
 
+  function addSelectedImages(input) {
+    clearMessage();
+    const incoming = Array.from(input.files || []);
+    if (!incoming.length) return;
+
+    if (selectedFiles.length + incoming.length > maxImages) {
+      showMessage(`Please submit no more than ${maxImages} photos/images in total.`, true);
+      input.value = "";
+      return;
+    }
+
+    try {
+      validateImages(incoming);
+      selectedFiles = selectedFiles.concat(incoming);
+      renderSelectedImages();
+    } catch (error) {
+      showMessage(error.message || "One of the images cannot be used.", true);
+    } finally {
+      input.value = "";
+    }
+  }
+
   function renderSelectedImages() {
-    const files = Array.from(imageInput.files || []);
-    imageList.innerHTML = files.map((file) => `
+    if (!selectedFiles.length) {
+      imageList.innerHTML = "";
+      return;
+    }
+
+    imageList.innerHTML = selectedFiles.map((file, index) => `
       <div class="file-row">
-        <span>${escapeHtml(file.name)}</span>
+        <span>${index + 1}. ${escapeHtml(file.name || `Photo ${index + 1}`)}</span>
         <span>${formatBytes(file.size)}</span>
       </div>
     `).join("");
@@ -127,12 +156,12 @@
     const subject = subjectSelect.value.trim();
     const week = weekSelect.value.trim();
     const text = typedAnswers.value.trim();
-    const files = Array.from(imageInput.files || []);
+    const files = selectedFiles.slice();
 
     if (!student || !grade) return showMessage("Choose your name.", true);
     if (!subject) return showMessage("Choose your subject.", true);
     if (!week) return showMessage("Choose the homework week.", true);
-    if (!text && !files.length) return showMessage("Type answers, add images, or use both.", true);
+    if (!text && !files.length) return showMessage("Type answers, take photos, add images, or use a combination.", true);
 
     validateImages(files);
 
@@ -170,10 +199,10 @@
     if (files.length > maxImages) throw new Error(`Please submit no more than ${maxImages} images.`);
     for (const file of files) {
       if (!["image/jpeg", "image/png"].includes(file.type)) {
-        throw new Error("Only JPG and PNG images are allowed.");
+        throw new Error("Please use a JPG or PNG photo/image.");
       }
       if (file.size > maxImageBytes) {
-        throw new Error(`${file.name} is too large. Keep each image under ${window.SNT_HOMEWORK_MAX_IMAGE_MB || 5} MB.`);
+        throw new Error(`${file.name || "A photo"} is too large. Keep each image under ${window.SNT_HOMEWORK_MAX_IMAGE_MB || 5} MB.`);
       }
     }
   }
@@ -275,7 +304,7 @@
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result || ""));
-      reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
+      reader.onerror = () => reject(new Error(`Could not read ${file.name || "the photo"}.`));
       reader.readAsDataURL(file);
     });
   }
