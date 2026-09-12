@@ -16,7 +16,7 @@
         <div class="brand-mark">SNT</div>
         <div>
           <h1>Submit Homework</h1>
-          <p class="muted">Choose your name, subject and homework week. Type answers, add images, or use both.</p>
+          <p class="muted">Choose your name, subject and homework week. Type answers, take photos, upload images, or use a combination.</p>
         </div>
       </div>
 
@@ -72,11 +72,21 @@
         </section>
 
         <section class="input-panel">
+          <div class="notice">
+            <strong>📸 Photo warning:</strong> Take clear, bright photos. Show the whole page, keep the phone straight, make sure writing is readable, and do not cut off question numbers or answers. Retake blurry or dark photos before submitting.
+          </div>
+
           <label>
-            Add homework photos / images <span class="optional">(optional)</span>
-            <input id="imageInput" type="file" accept="image/*" multiple>
+            📷 Take a photo with your phone <span class="optional">(optional)</span>
+            <input id="cameraInput" type="file" accept="image/*" capture="environment">
           </label>
-          <p class="help">On a phone, tap this to take a photo with the camera or choose existing images from Gallery/Files. You may submit text, images, or both together.</p>
+          <p class="help">Use this button for a new photo. You can return and take another photo if your homework has more than one page.</p>
+
+          <label>
+            🖼️ Choose existing photos / images <span class="optional">(optional)</span>
+            <input id="imageInput" type="file" accept="image/jpeg,image/png" multiple>
+          </label>
+          <p class="help">Choose clear JPG or PNG images already saved on the phone. You may submit typed answers, photos, existing images, or a combination.</p>
           <div id="imageList" class="file-list"></div>
         </section>
 
@@ -84,7 +94,7 @@
         <button id="submitBtn" class="submit-btn" type="submit">Submit homework</button>
       </form>
 
-      <footer>SNT Homework Submission • MVP 1.3</footer>
+      <footer>SNT Homework Submission • MVP 1.4</footer>
     </section>
   </main>
 </body>
