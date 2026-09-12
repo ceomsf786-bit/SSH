@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SNT Homework Submission</title>
+  <link rel="stylesheet" href="assets/css/homework-submit.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/homework-submit-config.js"></script>
+  <script defer src="assets/js/homework-submit.js"></script>
+</head>
+<body>
+  <main class="submit-shell">
+    <section class="submit-card">
+      <div class="brand-row">
+        <div class="brand-mark">SNT</div>
+        <div>
+          <h1>Submit Homework</h1>
+          <p class="muted">Choose your name, homework date, and send your completed work.</p>
+        </div>
+      </div>
+
+      <div id="contextBox" class="context-box hidden">
+        <span id="gradeBadge" class="context-pill"></span>
+        <span id="subjectBadge" class="context-pill"></span>
+        <span id="taskBadge" class="context-pill hidden"></span>
+      </div>
+
+      <div id="setupError" class="notice error hidden"></div>
+      <div id="resultCard" class="result-card hidden"></div>
+
+      <form id="submissionForm" class="submission-form hidden" novalidate>
+        <label>
+          Student name
+          <select id="studentSelect" required>
+            <option value="">Loading students...</option>
+          </select>
+        </label>
+
+        <label>
+          Date homework was given
+          <input id="activityDate" type="date" required>
+        </label>
+
+        <fieldset>
+          <legend>How are you submitting?</legend>
+          <div class="mode-grid">
+            <label class="mode-option">
+              <input type="radio" name="submissionMode" value="images" checked>
+              <span>📷 Photos / images</span>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="submissionMode" value="typed">
+              <span>⌨️ Type answers</span>
+            </label>
+          </div>
+        </fieldset>
+
+        <section id="imagePanel" class="input-panel">
+          <label>
+            Add clear photos of your completed work
+            <input id="imageInput" type="file" accept="image/jpeg,image/png" multiple>
+          </label>
+          <p class="help">JPG or PNG only. You can choose several images.</p>
+          <div id="imageList" class="file-list"></div>
+        </section>
+
+        <section id="typedPanel" class="input-panel hidden">
+          <label>
+            Type your answers
+            <textarea id="typedAnswers" rows="14" placeholder="Type your answers here. Keep question numbers clear, for example:&#10;&#10;1. ...&#10;2. ..."></textarea>
+          </label>
+        </section>
+
+        <div id="formMessage" class="notice hidden"></div>
+        <button id="submitBtn" class="submit-btn" type="submit">Submit homework</button>
+      </form>
+
+      <footer>SNT Homework Submission • MVP 1.0</footer>
+    </section>
+  </main>
+</body>
+</html>
