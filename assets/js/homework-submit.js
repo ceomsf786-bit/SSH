@@ -4,10 +4,17 @@
     "IS10": 10,
     "AV09": 9,
     "MD09": 9,
-    "FS06": 6
+    "FS06": 6,
+    "Test09": 9,
+    "md12": 12
   };
 
   const SUBJECTS = {
+    12: [
+      "English", "Afrikaans", "Mathematical Literacy", "Accounting",
+      "Economics", "Religion Studies", "Business Studies", "History",
+      "Life Sciences", "Life Orientation"
+    ],
     11: [
       "Mathematics", "Mathematical Literacy", "English", "Afrikaans",
       "Business Studies", "Economics", "History", "Geography",
