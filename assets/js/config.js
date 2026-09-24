@@ -4,7 +4,7 @@ const CONFIG_NEEDED = SUPABASE_URL.includes("PASTE_") || SUPABASE_PUBLISHABLE_KE
 const sb = CONFIG_NEEDED ? null : supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 window.sb = sb;
 
-const state = { grade:null, student:null, subjects:[], selectedSubject:null, quizzes:[], resourceLinks:[], resourceTerm:"", personalLinks:[], messages:[], progress:[], subjectScoreSummary:[], revisionControls:[], practiceWork:[], selectedQuiz:null, questions:[], answers:{}, qIndex:0, leaderboardScope:"grade", quizStartedAt:null, quizDeadlineAt:null, quizTimerInterval:null, timerExpired:false, quizSubmitting:false, reviewFilter:"all", quizFilters:{term:"",topic:"",unit:""}, previewMode:false };
+const state = { grade:null, student:null, learnerCode:null, subjects:[], selectedSubject:null, quizzes:[], resourceLinks:[], resourceTerm:"", personalLinks:[], messages:[], progress:[], subjectScoreSummary:[], revisionControls:[], practiceWork:[], selectedQuiz:null, questions:[], answers:{}, qIndex:0, leaderboardScope:"grade", quizStartedAt:null, quizDeadlineAt:null, quizTimerInterval:null, timerExpired:false, quizSubmitting:false, reviewFilter:"all", quizFilters:{term:"",topic:"",unit:""}, previewMode:false };
 const $ = (id) => document.getElementById(id);
 
 const demo = {
