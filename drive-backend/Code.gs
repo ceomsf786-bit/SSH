@@ -9,7 +9,7 @@
  *   UPLOAD_KEY = a private random term key
  */
 
-const ROOT_FOLDER_ID = '1IS-e-BS0cdEAYuiokx1M9leL8Sf-Hcfa';
+const ROOT_FOLDER_ID = '1LtM8wopuS0Yd5kAq3hsUYLuDvUZ5u6rl';
 const RETURN_URL = 'https://ceomsf786-bit.github.io/SSH/submit-homework.html';
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
@@ -54,19 +54,17 @@ function doPost(e) {
     }
 
     const root = DriveApp.getFolderById(ROOT_FOLDER_ID);
-    const gradeFolder = getOrCreateFolder_(root, `Grade ${grade}`);
-    const subjectFolder = getOrCreateFolder_(gradeFolder, safeSegment_(subject));
-    const dateFolder = getOrCreateFolder_(subjectFolder, activityDate);
+    const studentFolder = getOrCreateFolder_(root, safeSegment_(student));
 
-    const fileName = buildFileName_(activityDate, grade, subject, task, student);
+    const fileName = buildFileName_(activityDate, subject, task);
 
-    // No resubmissions: never overwrite an existing learner/date/subject/activity PDF.
-    if (dateFolder.getFilesByName(fileName).hasNext()) {
+    // No resubmissions: never overwrite the same learner/date/subject/activity PDF.
+    if (studentFolder.getFilesByName(fileName).hasNext()) {
       return redirectResult_('duplicate', p, '');
     }
 
     const blob = Utilities.newBlob(bytes, 'application/pdf', fileName);
-    const file = dateFolder.createFile(blob);
+    const file = studentFolder.createFile(blob);
     file.setDescription(
       `SNT Homework Submission\nStudent: ${student}\nGrade: ${grade}\nSubject: ${subject}\nHomework date: ${activityDate}` +
       (task ? `\nActivity: ${task}` : '') +
@@ -85,9 +83,9 @@ function getOrCreateFolder_(parent, name) {
   return existing.hasNext() ? existing.next() : parent.createFolder(name);
 }
 
-function buildFileName_(date, grade, subject, task, student) {
+function buildFileName_(date, subject, task) {
   const taskPart = task ? `__${safeSegment_(task)}` : '';
-  return `${date}__Grade-${grade}__${safeSegment_(subject)}${taskPart}__${safeSegment_(student)}.pdf`;
+  return `${date}__${safeSegment_(subject)}${taskPart}.pdf`;
 }
 
 function safeSegment_(value) {
