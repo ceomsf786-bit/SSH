@@ -1,19 +1,9 @@
--- Run against the Supabase project used by SSH (gbezoogwevzctjxemuif).
--- The public app uses the existing learner-code login RPC. No browser receives a service key.
-begin;
-
-create table if not exists public.student_practice_clicks (
-  id bigint generated always as identity primary key,
-  student_id uuid not null,
-  practice_id uuid not null,
-  click_kind text not null check (click_kind in ('link', 'quiz', 'card')),
-  clicked_at timestamptz not null default now()
-);
-create index if not exists student_practice_clicks_item_time
-  on public.student_practice_clicks (practice_id, student_id, clicked_at);
-alter table public.student_practice_clicks enable row level security;
-revoke all on public.student_practice_clicks from public, anon, authenticated;
-grant select on public.student_practice_clicks to service_role;
+-- Upgrade existing Student Hub click tracking to include taps on the card itself.
+alter table public.student_practice_clicks
+  drop constraint if exists student_practice_clicks_click_kind_check;
+alter table public.student_practice_clicks
+  add constraint student_practice_clicks_click_kind_check
+  check (click_kind in ('link', 'quiz', 'card'));
 
 create or replace function public.log_student_practice_click(
   p_student_id uuid, p_grade integer, p_full_name text,
@@ -24,7 +14,6 @@ begin
   if p_click_kind not in ('link','quiz','card') or p_practice_id is null then
     raise exception 'Invalid practice click';
   end if;
-  -- Verify the learner code against the same login used by the Student Hub.
   if not exists (
     select 1 from public.login_student(p_grade, p_full_name, p_learner_code) s
     where s.student_id = p_student_id
@@ -43,8 +32,3 @@ revoke all on function public.log_student_practice_click(uuid,integer,text,text,
   from public, anon, authenticated;
 grant execute on function public.log_student_practice_click(uuid,integer,text,text,uuid,text)
   to anon, authenticated;
-commit;
-
--- Smoke check after deployment (no learner code needed):
--- select count(*) from public.student_practice_clicks;
--- Confirm the Student Hub sends a click, then inspect practice_id, click_kind, clicked_at.
