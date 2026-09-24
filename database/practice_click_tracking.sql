@@ -6,7 +6,7 @@ create table if not exists public.student_practice_clicks (
   id bigint generated always as identity primary key,
   student_id uuid not null,
   practice_id uuid not null,
-  click_kind text not null check (click_kind in ('link', 'quiz')),
+  click_kind text not null check (click_kind in ('link', 'quiz', 'card')),
   clicked_at timestamptz not null default now()
 );
 create index if not exists student_practice_clicks_item_time
@@ -21,7 +21,7 @@ create or replace function public.log_student_practice_click(
 ) returns void language plpgsql security definer
 set search_path = public, pg_temp as $$
 begin
-  if p_click_kind not in ('link','quiz') or p_practice_id is null then
+  if p_click_kind not in ('link','quiz','card') or p_practice_id is null then
     raise exception 'Invalid practice click';
   end if;
   -- Verify the learner code against the same login used by the Student Hub.
