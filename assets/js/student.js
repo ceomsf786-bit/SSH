@@ -260,8 +260,12 @@ function renderPracticeWork(){
     const parsed=parsePracticeWorkText(p.practice_text);
     const link=safeExternalUrl(p.practice_url);
     const linkLabel=parsed.linkLabel||"Open outside resource";
-    return `<div class="practice-card"><div><span class="practice-date">${escapeHtml(formatDateShort(p.assigned_date)||"No date")}</span><div class="quiz-title">${escapeHtml(p.quiz_title||"Practice work")}</div>${parsed.text?`<div class="sub">${escapeHtml(parsed.text)}</div>`:""}${p.subject_name?`<div class="badges"><span class="badge blue">${escapeHtml(p.subject_name)}</span></div>`:""}${link?`<a class="btn2 practice-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" onclick="recordPracticeClick('${escapeJs(p.id)}','link')">${escapeHtml(linkLabel)} ↗</a>`:""}</div><div>${p.quiz_id?`<button class="btn-dark" onclick="openQuizFromPractice('${escapeJs(p.id)}','${escapeJs(p.subject_id||"")}','${escapeJs(p.quiz_id)}')">Open quiz ▶</button>`:""}</div></div>`;
+    return `<div class="practice-card" data-practice-id="${escapeHtml(p.id)}" onclick="handlePracticeCardClick(event,'${escapeJs(p.id)}')"><div><span class="practice-date">${escapeHtml(formatDateShort(p.assigned_date)||"No date")}</span><div class="quiz-title">${escapeHtml(p.quiz_title||"Practice work")}</div>${parsed.text?`<div class="sub">${escapeHtml(parsed.text)}</div>`:""}${p.subject_name?`<div class="badges"><span class="badge blue">${escapeHtml(p.subject_name)}</span></div>`:""}${link?`<a class="btn2 practice-link" href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(linkLabel)} ↗</a>`:""}<div class="practice-open-feedback" role="status" aria-live="polite">${p.openedLocally?"Opened · not completed":"Click this card to record opening"}</div></div><div>${p.quiz_id?`<button class="btn-dark practice-quiz" onclick="openQuizFromPractice('${escapeJs(p.id)}','${escapeJs(p.subject_id||"")}','${escapeJs(p.quiz_id)}')">Open quiz ▶</button>`:""}</div></div>`;
   }).join("")}</div>`;
+}
+function handlePracticeCardClick(event,practiceId){
+  const kind=event.target.closest(".practice-link")?"link":event.target.closest(".practice-quiz")?"quiz":"card";
+  void recordPracticeClick(practiceId,kind);
 }
 async function recordPracticeClick(practiceId,kind){
   if(CONFIG_NEEDED || state.previewMode || !state.student || !state.learnerCode || !practiceId)return;
@@ -271,13 +275,20 @@ async function recordPracticeClick(practiceId,kind){
       p_full_name:state.student.full_name,p_learner_code:state.learnerCode,
       p_practice_id:String(practiceId),p_click_kind:kind
     });
-    if(error)console.warn("Practice click was not saved:",error.message);
-  }catch(e){console.warn("Practice click was not saved:",e.message)}
+    if(error)throw error;
+    const item=(state.practiceWork||[]).find(p=>String(p.id)===String(practiceId));
+    if(item)item.openedLocally=true;
+    const card=[...document.querySelectorAll(".practice-card")].find(el=>el.dataset.practiceId===String(practiceId));
+    if(card)card.querySelector(".practice-open-feedback").textContent="Opened · not completed";
+  }catch(e){
+    console.warn("Practice click was not saved:",e.message);
+    const card=[...document.querySelectorAll(".practice-card")].find(el=>el.dataset.practiceId===String(practiceId));
+    if(card)card.querySelector(".practice-open-feedback").textContent="Opening not saved — please try again";
+  }
 }
 async function openQuizFromPractice(practiceId, subjectId, quizId){
   if(!quizId){return}
   if(subjectId){
-    void recordPracticeClick(practiceId,"quiz");
     await openQuizFromRevision(subjectId, quizId);return
   }
   alert("This practice quiz has no subject link. Please tell your teacher to refresh/re-save the practice item.");
