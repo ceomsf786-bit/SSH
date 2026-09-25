@@ -89,14 +89,15 @@
             <input id="imageInput" type="file" accept="image/jpeg,image/png" multiple>
           </label>
           <p class="help">Choose clear JPG or PNG images already saved on the phone. You may submit typed answers, photos, existing images, or a combination.</p>
-          <div id="imageList" class="file-list"></div>
+          <input id="retakeInput" class="hidden" type="file" accept="image/*" capture="environment">
+          <div id="imageList" class="file-list image-preview-list"></div>
         </section>
 
         <div id="formMessage" class="notice hidden"></div>
         <button id="submitBtn" class="submit-btn" type="submit">Submit homework</button>
       </form>
 
-      <footer>SNT Homework Submission • MVP 1.4</footer>
+      <footer>SNT Homework Submission • MVP 1.5</footer>
     </section>
   </main>
 </body>
