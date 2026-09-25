@@ -49,6 +49,7 @@
   const typedAnswers = $("typedAnswers");
   const cameraInput = $("cameraInput");
   const imageInput = $("imageInput");
+  const retakeInput = $("retakeInput");
   const imageList = $("imageList");
   const submitBtn = $("submitBtn");
   const formMessage = $("formMessage");
@@ -58,7 +59,8 @@
   const maxImages = Number(window.SNT_HOMEWORK_MAX_IMAGES || 8);
   const maxImageBytes = Number(window.SNT_HOMEWORK_MAX_IMAGE_MB || 5) * 1024 * 1024;
   const maxPdfBytes = Number(window.SNT_HOMEWORK_MAX_PDF_MB || 10) * 1024 * 1024;
-  let selectedFiles = [];
+  let selectedImages = [];
+  let pendingRetakeIndex = null;
 
   init();
 
@@ -97,6 +99,8 @@
     studentSelect.addEventListener("change", handleStudentChange);
     cameraInput.addEventListener("change", () => addSelectedImages(cameraInput));
     imageInput.addEventListener("change", () => addSelectedImages(imageInput));
+    retakeInput.addEventListener("change", handleRetakeSelection);
+    imageList.addEventListener("click", handleImageAction);
     form.addEventListener("submit", handleSubmit);
   }
 
@@ -118,12 +122,20 @@
       subjects.map((subject) => `<option value="${escapeHtml(subject)}">${escapeHtml(subject)}</option>`).join("");
   }
 
+  function makeImageItem(file) {
+    return {
+      file,
+      rotation: 0,
+      previewUrl: URL.createObjectURL(file)
+    };
+  }
+
   function addSelectedImages(input) {
     clearMessage();
     const incoming = Array.from(input.files || []);
     if (!incoming.length) return;
 
-    if (selectedFiles.length + incoming.length > maxImages) {
+    if (selectedImages.length + incoming.length > maxImages) {
       showMessage(`Please submit no more than ${maxImages} photos/images in total.`, true);
       input.value = "";
       return;
@@ -131,7 +143,7 @@
 
     try {
       validateImages(incoming);
-      selectedFiles = selectedFiles.concat(incoming);
+      selectedImages = selectedImages.concat(incoming.map(makeImageItem));
       renderSelectedImages();
     } catch (error) {
       showMessage(error.message || "One of the images cannot be used.", true);
@@ -140,16 +152,76 @@
     }
   }
 
+  function handleRetakeSelection() {
+    const incoming = Array.from(retakeInput.files || []);
+    if (pendingRetakeIndex === null || !incoming.length) {
+      retakeInput.value = "";
+      return;
+    }
+
+    try {
+      validateImages([incoming[0]]);
+      const oldItem = selectedImages[pendingRetakeIndex];
+      if (oldItem && oldItem.previewUrl) URL.revokeObjectURL(oldItem.previewUrl);
+      selectedImages[pendingRetakeIndex] = makeImageItem(incoming[0]);
+      renderSelectedImages();
+    } catch (error) {
+      showMessage(error.message || "The replacement photo cannot be used.", true);
+    } finally {
+      pendingRetakeIndex = null;
+      retakeInput.value = "";
+    }
+  }
+
+  function handleImageAction(event) {
+    const button = event.target.closest("button[data-image-action]");
+    if (!button) return;
+
+    const index = Number(button.dataset.index);
+    if (!Number.isInteger(index) || !selectedImages[index]) return;
+
+    const action = button.dataset.imageAction;
+
+    if (action === "rotate") {
+      selectedImages[index].rotation = (selectedImages[index].rotation + 90) % 360;
+      renderSelectedImages();
+      return;
+    }
+
+    if (action === "retake") {
+      pendingRetakeIndex = index;
+      retakeInput.click();
+      return;
+    }
+
+    if (action === "remove") {
+      const item = selectedImages[index];
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      selectedImages.splice(index, 1);
+      renderSelectedImages();
+    }
+  }
+
   function renderSelectedImages() {
-    if (!selectedFiles.length) {
+    if (!selectedImages.length) {
       imageList.innerHTML = "";
       return;
     }
 
-    imageList.innerHTML = selectedFiles.map((file, index) => `
-      <div class="file-row">
-        <span>${index + 1}. ${escapeHtml(file.name || `Photo ${index + 1}`)}</span>
-        <span>${formatBytes(file.size)}</span>
+    imageList.innerHTML = selectedImages.map((item, index) => `
+      <div class="image-card">
+        <div class="image-preview">
+          <img src="${item.previewUrl}" alt="Preview of homework image ${index + 1}" style="transform: rotate(${item.rotation}deg)">
+        </div>
+        <div class="image-meta">
+          <div class="image-name">${index + 1}. ${escapeHtml(item.file.name || `Photo ${index + 1}`)}</div>
+          <div class="image-size">${formatBytes(item.file.size)} • Rotation: ${item.rotation}°</div>
+          <div class="image-actions">
+            <button class="image-action" type="button" data-image-action="rotate" data-index="${index}">↻ Rotate 90°</button>
+            <button class="image-action" type="button" data-image-action="retake" data-index="${index}">📷 Retake</button>
+            <button class="image-action remove" type="button" data-image-action="remove" data-index="${index}">Remove</button>
+          </div>
+        </div>
       </div>
     `).join("");
   }
@@ -163,18 +235,18 @@
     const subject = subjectSelect.value.trim();
     const week = weekSelect.value.trim();
     const text = typedAnswers.value.trim();
-    const files = selectedFiles.slice();
+    const images = selectedImages.map((item) => ({ ...item }));
 
     if (!student || !grade) return showMessage("Choose your name.", true);
     if (!subject) return showMessage("Choose your subject.", true);
     if (!week) return showMessage("Choose the homework week.", true);
-    if (!text && !files.length) return showMessage("Type answers, take photos, add images, or use a combination.", true);
+    if (!text && !images.length) return showMessage("Type answers, take photos, add images, or use a combination.", true);
 
-    validateImages(files);
+    validateImages(images.map((item) => item.file));
 
     try {
       setBusy(true, "Preparing PDF...");
-      const pdfData = await buildCombinedPdf({ student, grade, subject, week, text, files });
+      const pdfData = await buildCombinedPdf({ student, grade, subject, week, text, images });
       const base64 = pdfData.split(",")[1] || "";
       const approxBytes = Math.ceil(base64.length * 3 / 4);
 
@@ -190,7 +262,7 @@
         task: week,
         student,
         activity_date: today,
-        submission_mode: text && files.length ? "text+images" : text ? "typed" : "images",
+        submission_mode: text && images.length ? "text+images" : text ? "typed" : "images",
         upload_key: UPLOAD_KEY,
         file_name: buildFileName(student, grade, subject, week, today),
         mime_type: "application/pdf",
@@ -214,54 +286,198 @@
     }
   }
 
-  async function buildCombinedPdf({ student, grade, subject, week, text, files }) {
+  async function buildCombinedPdf({ student, grade, subject, week, text, images }) {
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    const preparedImages = [];
+
+    for (const item of images) {
+      preparedImages.push(await prepareImageForPdf(item));
+    }
+
+    const firstOrientation = text
+      ? "portrait"
+      : preparedImages.length && preparedImages[0].width > preparedImages[0].height
+        ? "landscape"
+        : "portrait";
+
+    const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: firstOrientation });
     let hasContent = false;
 
     if (text) {
-      let y = addHeader(pdf, student, grade, subject, week, "Typed answers / notes");
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(11);
-      const lines = pdf.splitTextToSize(text, 178);
-      for (const line of lines) {
-        if (y > 282) {
-          pdf.addPage();
-          y = addHeader(pdf, student, grade, subject, week, "Typed answers / notes (continued)");
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(11);
-        }
-        pdf.text(line, 16, y);
-        y += 6;
-      }
+      renderTypedAnswers(pdf, { student, grade, subject, week, text });
       hasContent = true;
     }
 
-    for (let i = 0; i < files.length; i++) {
-      if (hasContent || i > 0) pdf.addPage();
-      const yStart = addHeader(pdf, student, grade, subject, week, `Homework image ${i + 1} of ${files.length}`);
-      const dataUrl = await fileToDataUrl(files[i]);
-      const size = await getImageSize(dataUrl);
-      const marginX = 12;
-      const bottomMargin = 12;
-      const maxW = 210 - marginX * 2;
-      const maxH = 297 - yStart - bottomMargin;
-      const scale = Math.min(maxW / size.width, maxH / size.height);
-      const w = size.width * scale;
-      const h = size.height * scale;
-      const x = (210 - w) / 2;
-      const format = files[i].type === "image/png" ? "PNG" : "JPEG";
-      pdf.addImage(dataUrl, format, x, yStart, w, h, undefined, "FAST");
+    for (let i = 0; i < preparedImages.length; i++) {
+      const image = preparedImages[i];
+      const orientation = image.width > image.height ? "landscape" : "portrait";
+
+      if (hasContent || i > 0) {
+        pdf.addPage("a4", orientation);
+      }
+
+      const yStart = addImageHeader(
+        pdf,
+        student,
+        grade,
+        subject,
+        week,
+        `Homework image ${i + 1} of ${preparedImages.length}`
+      );
+
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const marginX = 7;
+      const bottomMargin = 7;
+      const maxW = pageW - marginX * 2;
+      const maxH = pageH - yStart - bottomMargin;
+      const scale = Math.min(maxW / image.width, maxH / image.height);
+      const w = image.width * scale;
+      const h = image.height * scale;
+      const x = (pageW - w) / 2;
+      const y = yStart + Math.max(0, (maxH - h) / 2);
+
+      pdf.addImage(image.dataUrl, image.format, x, y, w, h, undefined, "FAST");
       hasContent = true;
     }
 
     return pdf.output("datauristring");
   }
 
+  function renderTypedAnswers(pdf, { student, grade, subject, week, text }) {
+    let y = addHeader(pdf, student, grade, subject, week, "Typed answers / notes");
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(11);
+
+    const logicalLines = normalizeTypedText(text).split("\n");
+
+    for (const logicalLine of logicalLines) {
+      if (!logicalLine.trim()) {
+        y += 3;
+        continue;
+      }
+
+      const wrapped = pdf.splitTextToSize(logicalLine, 178);
+
+      for (const line of wrapped) {
+        if (y > 284) {
+          pdf.addPage("a4", "portrait");
+          y = addHeader(pdf, student, grade, subject, week, "Typed answers / notes (continued)");
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(11);
+        }
+        pdf.text(line, 16, y);
+        y += 5.2;
+      }
+    }
+  }
+
+  function normalizeTypedText(value) {
+    const lines = String(value || "")
+      .replace(/\r\n?/g, "\n")
+      .replace(/\t/g, "    ")
+      .split("\n")
+      .map((line) => line.replace(/[ \u00A0]+$/g, ""));
+
+    const cleaned = [];
+    let previousBlank = false;
+
+    for (const line of lines) {
+      const isBlank = !line.trim();
+      if (isBlank && previousBlank) continue;
+      cleaned.push(line);
+      previousBlank = isBlank;
+    }
+
+    return cleaned.join("\n").trim();
+  }
+
+  async function prepareImageForPdf(item) {
+    const source = await loadOrientedImage(item.file);
+    const sourceWidth = source.width || source.naturalWidth;
+    const sourceHeight = source.height || source.naturalHeight;
+
+    if (!sourceWidth || !sourceHeight) {
+      if (source.close) source.close();
+      throw new Error("One of the homework images has invalid dimensions.");
+    }
+
+    const rotation = ((Number(item.rotation || 0) % 360) + 360) % 360;
+    const quarterTurns = Math.round(rotation / 90) % 4;
+    const longEdgeLimit = 3200;
+    const resizeScale = Math.min(1, longEdgeLimit / Math.max(sourceWidth, sourceHeight));
+    const drawW = Math.max(1, Math.round(sourceWidth * resizeScale));
+    const drawH = Math.max(1, Math.round(sourceHeight * resizeScale));
+
+    const canvas = document.createElement("canvas");
+    if (quarterTurns % 2) {
+      canvas.width = drawH;
+      canvas.height = drawW;
+    } else {
+      canvas.width = drawW;
+      canvas.height = drawH;
+    }
+
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) throw new Error("This browser could not prepare the homework image.");
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (quarterTurns === 1) {
+      ctx.translate(canvas.width, 0);
+      ctx.rotate(Math.PI / 2);
+    } else if (quarterTurns === 2) {
+      ctx.translate(canvas.width, canvas.height);
+      ctx.rotate(Math.PI);
+    } else if (quarterTurns === 3) {
+      ctx.translate(0, canvas.height);
+      ctx.rotate(-Math.PI / 2);
+    }
+
+    ctx.drawImage(source, 0, 0, drawW, drawH);
+    if (source.close) source.close();
+
+    const isPng = item.file.type === "image/png";
+    const mime = isPng ? "image/png" : "image/jpeg";
+    const format = isPng ? "PNG" : "JPEG";
+    const dataUrl = isPng
+      ? canvas.toDataURL(mime)
+      : canvas.toDataURL(mime, 0.93);
+
+    return {
+      dataUrl,
+      format,
+      width: canvas.width,
+      height: canvas.height
+    };
+  }
+
+  async function loadOrientedImage(file) {
+    if ("createImageBitmap" in window) {
+      try {
+        return await createImageBitmap(file, { imageOrientation: "from-image" });
+      } catch (error) {
+        // Fall back to the browser image decoder below.
+      }
+    }
+
+    const dataUrl = await fileToDataUrl(file);
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Could not open ${file.name || "the photo"}.`));
+      img.src = dataUrl;
+    });
+  }
+
   function addHeader(pdf, student, grade, subject, week, detail) {
+    const pageW = pdf.internal.pageSize.getWidth();
+
     pdf.setFont("helvetica", "bold");
     pdf.setFontSize(15);
     pdf.text("SNT Homework Submission", 16, 16);
+
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "normal");
     pdf.text(`Student: ${student}`, 16, 23);
@@ -269,9 +485,29 @@
     pdf.text(`Subject: ${subject}`, 16, 35);
     pdf.text(`Term 4 activity: ${week}`, 16, 41);
     pdf.text(detail, 16, 47);
+
     pdf.setDrawColor(210);
-    pdf.line(16, 51, 194, 51);
+    pdf.line(16, 51, pageW - 16, 51);
     return 57;
+  }
+
+  function addImageHeader(pdf, student, grade, subject, week, detail) {
+    const pageW = pdf.internal.pageSize.getWidth();
+
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(12);
+    pdf.text("SNT Homework Submission", 10, 10);
+
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8.5);
+    const meta = `${student} • Grade ${grade} • ${subject} • Term 4 ${week} • ${detail}`;
+    const metaLines = pdf.splitTextToSize(meta, pageW - 20);
+    pdf.text(metaLines, 10, 15);
+
+    const lineY = 15 + (metaLines.length * 3.8) + 1;
+    pdf.setDrawColor(210);
+    pdf.line(10, lineY, pageW - 10, lineY);
+    return lineY + 4;
   }
 
   function postToDrive(payload) {
