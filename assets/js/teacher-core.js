@@ -17,13 +17,13 @@ function fillAdminGrades(){
   const normal=["admStudentGrade","admSubjectGrade","admStudentLinkGrade","admMasterCsvDefaultGrade","admBroadcastGrade"];
   normal.forEach(id=>{
     const e=$(id); if(!e || e.dataset.filled==="1") return;
-    let h=""; for(let g=4; g<=11; g++) h += `<option value="${g}">Grade ${g}</option>`;
+    let h=""; for(let g=4; g<=12; g++) h += `<option value="${g}">Grade ${g}</option>`;
     e.innerHTML=h; e.dataset.filled="1";
   });
   const allGrade=$("admFilterGrade");
   if(allGrade && allGrade.dataset.filled!=="1"){
     let h=`<option value="">All grades</option>`;
-    for(let g=4; g<=11; g++) h += `<option value="${g}">Grade ${g}</option>`;
+    for(let g=4; g<=12; g++) h += `<option value="${g}">Grade ${g}</option>`;
     allGrade.innerHTML=h; allGrade.dataset.filled="1";
   }
 }
@@ -92,7 +92,7 @@ async function recordResourceClick(resourceLinkId){
 
 /* STUDENTS */
 function adminStudentGradesArray(student){
-  return String(student?.grades||"").split(/[^0-9]+/).map(Number).filter(g=>g>=4&&g<=11);
+  return String(student?.grades||"").split(/[^0-9]+/).map(Number).filter(g=>g>=4&&g<=12);
 }
 function adminStudentHighestGrade(student){
   const grades=adminStudentGradesArray(student);

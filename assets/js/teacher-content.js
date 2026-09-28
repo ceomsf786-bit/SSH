@@ -205,7 +205,7 @@ async function adminLoadQuizzes(){
 function adminFillQuizMetaFilters(){
   const gradeSel=$("admQuizFilterGrade");
   if(gradeSel && gradeSel.dataset.filled!=="1"){
-    gradeSel.innerHTML='<option value="">Choose grade</option>'+[11,10,9,8,7,6,5,4].map(g=>`<option value="${g}">Grade ${g}</option>`).join("");
+    gradeSel.innerHTML='<option value="">Choose grade</option>'+[12,11,10,9,8,7,6,5,4].map(g=>`<option value="${g}">Grade ${g}</option>`).join("");
     gradeSel.dataset.filled="1";
   }
   adminRefreshQuizFilterOptions();
@@ -271,7 +271,7 @@ async function adminDeleteQuiz(id){if(!confirm("Delete quiz and questions?"))ret
 function adminFillManagedGradeSelectors(){
   ["admPracticeGrade","admRevisionGrade"].forEach(id=>{
     const el=$(id); if(!el || el.dataset.filled==="1")return;
-    el.innerHTML='<option value="">Choose grade</option>'+[11,10,9,8,7,6,5,4].map(g=>`<option value="${g}">Grade ${g}</option>`).join("");
+    el.innerHTML='<option value="">Choose grade</option>'+[12,11,10,9,8,7,6,5,4].map(g=>`<option value="${g}">Grade ${g}</option>`).join("");
     el.dataset.filled="1";
   });
 }

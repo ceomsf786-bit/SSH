@@ -6,7 +6,7 @@ function bindEvents(){
   $("loginBtn").addEventListener("click",login); $("logoutBtn").addEventListener("click",logout); $("avatarInput").addEventListener("change",uploadAvatar);
   $("tabGrade").addEventListener("click",()=>setLeaderboardScope("grade")); $("tabSubject").addEventListener("click",()=>setLeaderboardScope("subject")); $("tabQuiz").addEventListener("click",()=>setLeaderboardScope("quiz"));
 }
-function renderGradeButtons(){const box=$("gradeGrid");box.innerHTML="";for(let g=4;g<=11;g++){const btn=document.createElement("button");btn.className="grade-btn";btn.textContent=`Grade ${g}`;btn.onclick=()=>chooseGrade(g);box.appendChild(btn)}}
+function renderGradeButtons(){const box=$("gradeGrid");box.innerHTML="";for(let g=4;g<=12;g++){const btn=document.createElement("button");btn.className="grade-btn";btn.textContent=`Grade ${g}`;btn.onclick=()=>chooseGrade(g);box.appendChild(btn)}}
 async function chooseGrade(grade){
   state.grade=grade; document.querySelectorAll(".grade-btn").forEach(btn=>btn.classList.toggle("active",btn.textContent===`Grade ${grade}`));
   $("mainTitle").textContent=`Grade ${grade}`; $("mainHint").textContent="Login to open Student Hub."; await loadStudentsForGrade();
