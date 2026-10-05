@@ -4,14 +4,12 @@
  * Deployment:
  *   Execute as: Me
  *   Who has access: Anyone
- *
- * Required Script Property:
- *   UPLOAD_KEY = a private random term key
  */
 
 const ROOT_FOLDER_ID = '1LtM8wopuS0Yd5kAq3hsUYLuDvUZ5u6rl';
 const RETURN_URL = 'https://ceomsf786-bit.github.io/SSH/submit-homework.html';
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
+const UPLOAD_KEY = 'SNT-T4-HOMEWORK-2026-ENK';
 
 function doGet() {
   return HtmlService.createHtmlOutput('SNT Homework Submission backend is online.');
@@ -21,12 +19,8 @@ function doPost(e) {
   try {
     const p = (e && e.parameter) || {};
     const uploadKey = String(p.upload_key || '');
-    const expectedKey = PropertiesService.getScriptProperties().getProperty('UPLOAD_KEY');
 
-    if (!expectedKey) {
-      return redirectResult_('error', p, 'Teacher setup is incomplete.');
-    }
-    if (!uploadKey || uploadKey !== expectedKey) {
+    if (!uploadKey || uploadKey !== UPLOAD_KEY) {
       return redirectResult_('error', p, 'Invalid homework submission link.');
     }
 
@@ -53,28 +47,29 @@ function doPost(e) {
       return redirectResult_('error', p, 'The homework file is too large.');
     }
 
+    const submittedAt = new Date();
     const root = DriveApp.getFolderById(ROOT_FOLDER_ID);
     const studentFolder = getOrCreateFolder_(root, safeSegment_(student));
 
-    const fileName = buildFileName_(activityDate, subject, task);
-
-    // No resubmissions: never overwrite the same learner/date/subject/activity PDF.
-    if (studentFolder.getFilesByName(fileName).hasNext()) {
-      return redirectResult_('duplicate', p, '');
-    }
-
+    // Every hand-in receives a unique filename. Existing submissions never block a new one.
+    const fileName = buildFileName_(activityDate, subject, task, submittedAt);
     const blob = Utilities.newBlob(bytes, 'application/pdf', fileName);
     const file = studentFolder.createFile(blob);
+
     file.setDescription(
       `SNT Homework Submission\nStudent: ${student}\nGrade: ${grade}\nSubject: ${subject}\nHomework date: ${activityDate}` +
       (task ? `\nActivity: ${task}` : '') +
-      `\nSubmitted: ${new Date().toISOString()}`
+      `\nSubmitted: ${submittedAt.toISOString()}`
     );
 
     return redirectResult_('success', p, '');
   } catch (error) {
     console.error(error);
-    return redirectResult_('error', (e && e.parameter) || {}, 'Submission could not be saved. Please tell your teacher.');
+    return redirectResult_(
+      'error',
+      (e && e.parameter) || {},
+      'Submission could not be saved. Please tell your teacher.'
+    );
   }
 }
 
@@ -83,9 +78,14 @@ function getOrCreateFolder_(parent, name) {
   return existing.hasNext() ? existing.next() : parent.createFolder(name);
 }
 
-function buildFileName_(date, subject, task) {
+function buildFileName_(date, subject, task, submittedAt) {
   const taskPart = task ? `__${safeSegment_(task)}` : '';
-  return `${date}__${safeSegment_(subject)}${taskPart}.pdf`;
+  const timePart = Utilities.formatDate(
+    submittedAt || new Date(),
+    'Africa/Johannesburg',
+    'HHmmss-SSS'
+  );
+  return `${date}__${safeSegment_(subject)}${taskPart}__${timePart}.pdf`;
 }
 
 function safeSegment_(value) {
@@ -123,4 +123,19 @@ function redirectResult_(status, p, message) {
     `<p>Returning to SNT...</p>` +
     `<script>window.location.replace(${safeTarget});</script>`
   );
+}
+
+/**
+ * Optional diagnostic. Run manually inside Apps Script if Drive permissions need checking.
+ */
+function checkDriveAccess() {
+  console.log('Effective user: ' + Session.getEffectiveUser().getEmail());
+  console.log('Testing folder ID: ' + ROOT_FOLDER_ID);
+
+  try {
+    const folder = DriveApp.getFolderById(ROOT_FOLDER_ID);
+    console.log('SUCCESS - Folder found: ' + folder.getName());
+  } catch (error) {
+    console.log('FAILED - ' + error.toString());
+  }
 }
