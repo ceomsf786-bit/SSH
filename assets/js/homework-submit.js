@@ -61,6 +61,34 @@
   const maxPdfBytes = Number(window.SNT_HOMEWORK_MAX_PDF_MB || 10) * 1024 * 1024;
   let selectedImages = [];
   let pendingRetakeIndex = null;
+  const visitId = makeVisitId();
+  const trackingImages = [];
+
+  function makeVisitId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+    return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2);
+  }
+
+  // Fire-and-forget telemetry: failed tracking MUST NOT break submission.
+  function track(event, student = "", grade = "", subject = "", week = "") {
+    const endpoint = String(window.SNT_HOMEWORK_UPLOAD_ENDPOINT || "").trim();
+    if (!endpoint) return;
+    const u = new URL(endpoint);
+    u.searchParams.set("action", "track");
+    u.searchParams.set("upload_key", UPLOAD_KEY);
+    u.searchParams.set("event", event);
+    u.searchParams.set("visit_id", visitId);
+    if (student) u.searchParams.set("student", student);
+    if (grade) u.searchParams.set("grade", String(grade));
+    if (subject) u.searchParams.set("subject", subject);
+    if (week) u.searchParams.set("week", week);
+    const ping = new Image();
+    trackingImages.push(ping);
+    const remove = () => { const i = trackingImages.indexOf(ping); if (i >= 0) trackingImages.splice(i, 1); };
+    ping.onload = remove;
+    ping.onerror = remove;
+    ping.src = u.toString();
+  }
 
   init();
 
@@ -96,6 +124,7 @@
       resultCard.innerHTML = `<h2>Submission not completed</h2><p>${escapeHtml(returnedMessage || "Please try again.")}</p>`;
     }
 
+    track("page_open");
     studentSelect.addEventListener("change", handleStudentChange);
     cameraInput.addEventListener("change", () => addSelectedImages(cameraInput));
     imageInput.addEventListener("change", () => addSelectedImages(imageInput));
@@ -116,6 +145,7 @@
     }
 
     gradeBadge.textContent = `Grade ${grade}`;
+    track("student_selected", student, grade);
     const subjects = SUBJECTS[grade] || [];
     subjectSelect.disabled = false;
     subjectSelect.innerHTML = `<option value="">Choose subject</option>` +
@@ -255,6 +285,7 @@
       }
 
       const today = new Date().toISOString().slice(0, 10);
+      track("submission_attempt", student, grade, subject, week);
       setBusy(true, "Sending to Drive...");
       postToDrive({
         grade: String(grade),
@@ -264,11 +295,13 @@
         activity_date: today,
         submission_mode: text && images.length ? "text+images" : text ? "typed" : "images",
         upload_key: UPLOAD_KEY,
+        visit_id: visitId,
         file_name: buildFileName(student, grade, subject, week, today),
         mime_type: "application/pdf",
         file_base64: base64
       });
     } catch (error) {
+      track("client_error", student, grade, subject, week);
       setBusy(false, "Submit homework");
       showMessage(error.message || "Could not prepare submission.", true);
     }
