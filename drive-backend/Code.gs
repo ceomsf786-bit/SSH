@@ -8,7 +8,7 @@
 
 const ROOT_FOLDER_ID = '1LtM8wopuS0Yd5kAq3hsUYLuDvUZ5u6rl';
 const RETURN_URL = 'https://ceomsf786-bit.github.io/SSH/submit-homework.html';
-const MAX_PDF_BYTES = 10 * 1024 * 1024;
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const UPLOAD_KEY = 'SNT-T4-HOMEWORK-2026-ENK';
 
 function doGet(e) {
@@ -47,7 +47,8 @@ function doPost(e) {
     const student = cleanText_(p.student, 80);
     const activityDate = String(p.activity_date || '').trim();
     const mimeType = String(p.mime_type || '').trim();
-    const base64 = String(p.file_base64 || '').replace(/^data:application\/pdf;base64,/, '');
+    const originalFileName = cleanText_(p.file_name, 180);
+    const base64 = String(p.file_base64 || '').replace(/^data:[^;]+;base64,/, '');
 
     if (!/^(?:[4-9]|1[0-2])$/.test(grade)) {
       return redirectResult_('error', p, 'Invalid grade.');
@@ -55,12 +56,17 @@ function doPost(e) {
     if (!subject || !student || !/^\d{4}-\d{2}-\d{2}$/.test(activityDate)) {
       return redirectResult_('error', p, 'Student, subject or homework date is missing.');
     }
-    if (mimeType !== 'application/pdf' || !base64) {
-      return redirectResult_('error', p, 'The homework PDF is missing.');
+    const allowedMimeTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+    if (allowedMimeTypes.indexOf(mimeType) === -1 || !base64) {
+      return redirectResult_('error', p, 'Please submit a PDF, DOC or DOCX homework file.');
     }
 
     const bytes = Utilities.base64Decode(base64);
-    if (!bytes.length || bytes.length > MAX_PDF_BYTES) {
+    if (!bytes.length || bytes.length > MAX_FILE_BYTES) {
       return redirectResult_('error', p, 'The homework file is too large.');
     }
 
@@ -69,8 +75,9 @@ function doPost(e) {
     const studentFolder = getOrCreateFolder_(root, safeSegment_(student));
 
     // Every hand-in receives a unique filename. Existing submissions never block a new one.
-    const fileName = buildFileName_(activityDate, subject, task, submittedAt);
-    const blob = Utilities.newBlob(bytes, 'application/pdf', fileName);
+    const extension = extensionFor_(mimeType, originalFileName);
+    const fileName = buildFileName_(activityDate, subject, task, submittedAt, extension);
+    const blob = Utilities.newBlob(bytes, mimeType, fileName);
     const file = studentFolder.createFile(blob);
 
     file.setDescription(
@@ -120,14 +127,23 @@ function getOrCreateFolder_(parent, name) {
   return existing.hasNext() ? existing.next() : parent.createFolder(name);
 }
 
-function buildFileName_(date, subject, task, submittedAt) {
+function buildFileName_(date, subject, task, submittedAt, extension) {
   const taskPart = task ? `__${safeSegment_(task)}` : '';
   const timePart = Utilities.formatDate(
     submittedAt || new Date(),
     'Africa/Johannesburg',
     'HHmmss-SSS'
   );
-  return `${date}__${safeSegment_(subject)}${taskPart}__${timePart}.pdf`;
+  const ext = String(extension || 'pdf').replace(/[^a-z0-9]/gi, '').toLowerCase() || 'pdf';
+  return `${date}__${safeSegment_(subject)}${taskPart}__${timePart}.${ext}`;
+}
+
+function extensionFor_(mimeType, originalFileName) {
+  const name = String(originalFileName || '').toLowerCase();
+  if (mimeType === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
+  if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || name.endsWith('.docx')) return 'docx';
+  if (mimeType === 'application/msword' || name.endsWith('.doc')) return 'doc';
+  return 'bin';
 }
 
 function safeSegment_(value) {
