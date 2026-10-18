@@ -16,36 +16,41 @@
         <div class="brand-mark">SNT</div>
         <div>
           <h1>Submit Homework</h1>
-          <p class="muted">Choose your name, subject and homework week. Type answers, take photos, upload images, or use a combination.</p>
+          <p class="muted">Choose your grade, name, subject and homework week. Type answers, take photos, upload images, or upload a PDF/Word document.</p>
         </div>
       </div>
 
       <div class="context-box">
         <span class="context-pill">Term 4</span>
-        <span id="gradeBadge" class="context-pill">Choose learner</span>
+        <span id="gradeBadge" class="context-pill">Choose grade</span>
       </div>
 
       <div id="resultCard" class="result-card hidden"></div>
 
       <form id="submissionForm" class="submission-form" novalidate>
         <label>
+          Grade
+          <select id="gradeSelect" required>
+            <option value="">Choose grade</option>
+            <option value="12">Grade 12</option>
+            <option value="11">Grade 11</option>
+            <option value="10">Grade 10</option>
+            <option value="9">Grade 9</option>
+            <option value="6">Grade 6</option>
+          </select>
+        </label>
+
+        <label>
           Student name
-          <select id="studentSelect" required>
-            <option value="">Choose your name</option>
-            <option value="RG11">RG11</option>
-            <option value="IS10">IS10</option>
-            <option value="AV09">AV09</option>
-            <option value="MD09">MD09</option>
-            <option value="FS06">FS06</option>
-            <option value="Test09">Test09</option>
-            <option value="md12">md12</option>
+          <select id="studentSelect" required disabled>
+            <option value="">Choose grade first</option>
           </select>
         </label>
 
         <label>
           Subject
           <select id="subjectSelect" required disabled>
-            <option value="">Choose your name first</option>
+            <option value="">Choose student first</option>
           </select>
         </label>
 
@@ -93,11 +98,20 @@
           <div id="imageList" class="file-list image-preview-list"></div>
         </section>
 
+        <section class="input-panel">
+          <label>
+            📄 Upload PDF or Word document <span class="optional">(optional)</span>
+            <input id="documentInput" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+          </label>
+          <p class="help">Accepted: PDF, DOC or DOCX. Use this instead of typed answers/photos when the homework is already saved as a document.</p>
+          <div id="documentList" class="file-list"></div>
+        </section>
+
         <div id="formMessage" class="notice hidden"></div>
         <button id="submitBtn" class="submit-btn" type="submit">Submit homework</button>
       </form>
 
-      <footer>SNT Homework Submission • MVP 1.5</footer>
+      <footer>SNT Homework Submission • MVP 1.6</footer>
     </section>
   </main>
 </body>
