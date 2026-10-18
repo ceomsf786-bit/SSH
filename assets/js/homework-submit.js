@@ -1,12 +1,17 @@
 (() => {
   const STUDENTS = {
+    "MD12": 12,
     "RG11": 11,
+    "UI11": 11,
+    "ARA10": 10,
     "IS10": 10,
+    "NM10": 10,
+    "YVDP10": 10,
+    "ZA10": 10,
     "AV09": 9,
     "MD09": 9,
-    "FS06": 6,
     "Test09": 9,
-    "md12": 12
+    "FS06": 6
   };
 
   const SUBJECTS = {
@@ -43,6 +48,7 @@
   const $ = (id) => document.getElementById(id);
 
   const form = $("submissionForm");
+  const gradeSelect = $("gradeSelect");
   const studentSelect = $("studentSelect");
   const subjectSelect = $("subjectSelect");
   const weekSelect = $("weekSelect");
@@ -51,6 +57,8 @@
   const imageInput = $("imageInput");
   const retakeInput = $("retakeInput");
   const imageList = $("imageList");
+  const documentInput = $("documentInput");
+  const documentList = $("documentList");
   const submitBtn = $("submitBtn");
   const formMessage = $("formMessage");
   const resultCard = $("resultCard");
@@ -60,6 +68,7 @@
   const maxImageBytes = Number(window.SNT_HOMEWORK_MAX_IMAGE_MB || 5) * 1024 * 1024;
   const maxPdfBytes = Number(window.SNT_HOMEWORK_MAX_PDF_MB || 10) * 1024 * 1024;
   let selectedImages = [];
+  let selectedDocument = null;
   let pendingRetakeIndex = null;
   const visitId = makeVisitId();
   const trackingImages = [];
@@ -125,27 +134,51 @@
     }
 
     track("page_open");
+    gradeSelect.addEventListener("change", handleGradeChange);
     studentSelect.addEventListener("change", handleStudentChange);
     cameraInput.addEventListener("change", () => addSelectedImages(cameraInput));
     imageInput.addEventListener("change", () => addSelectedImages(imageInput));
     retakeInput.addEventListener("change", handleRetakeSelection);
     imageList.addEventListener("click", handleImageAction);
+    documentInput.addEventListener("change", handleDocumentSelection);
     form.addEventListener("submit", handleSubmit);
+  }
+
+  function handleGradeChange() {
+    const grade = Number(gradeSelect.value || 0);
+    gradeBadge.textContent = grade ? `Grade ${grade}` : "Choose grade";
+
+    subjectSelect.disabled = true;
+    subjectSelect.innerHTML = `<option value="">Choose student first</option>`;
+
+    if (!grade) {
+      studentSelect.disabled = true;
+      studentSelect.innerHTML = `<option value="">Choose grade first</option>`;
+      return;
+    }
+
+    const names = Object.keys(STUDENTS)
+      .filter((name) => STUDENTS[name] === grade)
+      .sort((a, b) => a.localeCompare(b));
+
+    studentSelect.disabled = false;
+    studentSelect.innerHTML = `<option value="">Choose your name</option>` +
+      names.map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
   }
 
   function handleStudentChange() {
     const student = studentSelect.value;
-    const grade = STUDENTS[student];
+    const grade = Number(gradeSelect.value || 0);
 
-    if (!grade) {
-      gradeBadge.textContent = "Choose learner";
+    if (!student || !grade || STUDENTS[student] !== grade) {
       subjectSelect.disabled = true;
-      subjectSelect.innerHTML = `<option value="">Choose your name first</option>`;
+      subjectSelect.innerHTML = `<option value="">Choose student first</option>`;
       return;
     }
 
     gradeBadge.textContent = `Grade ${grade}`;
     track("student_selected", student, grade);
+
     const subjects = SUBJECTS[grade] || [];
     subjectSelect.disabled = false;
     subjectSelect.innerHTML = `<option value="">Choose subject</option>` +
@@ -256,25 +289,127 @@
     `).join("");
   }
 
+  function handleDocumentSelection() {
+    clearMessage();
+    const file = (documentInput.files || [])[0] || null;
+
+    if (!file) {
+      selectedDocument = null;
+      renderSelectedDocument();
+      return;
+    }
+
+    try {
+      validateDocument(file);
+      selectedDocument = file;
+      renderSelectedDocument();
+    } catch (error) {
+      selectedDocument = null;
+      documentInput.value = "";
+      renderSelectedDocument();
+      showMessage(error.message || "This document cannot be used.", true);
+    }
+  }
+
+  function renderSelectedDocument() {
+    if (!selectedDocument) {
+      documentList.innerHTML = "";
+      return;
+    }
+
+    documentList.innerHTML = `
+      <div class="file-row">
+        <span>📄 ${escapeHtml(selectedDocument.name || "Homework document")}</span>
+        <span>${formatBytes(selectedDocument.size)}</span>
+      </div>
+    `;
+  }
+
+  function validateDocument(file) {
+    const name = String(file.name || "").toLowerCase();
+    const allowedExt = [".pdf", ".doc", ".docx"].some((ext) => name.endsWith(ext));
+    const allowedMime = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ].includes(file.type);
+
+    if (!allowedExt && !allowedMime) {
+      throw new Error("Please upload a PDF, DOC or DOCX file.");
+    }
+
+    if (file.size > maxPdfBytes) {
+      throw new Error(`${file.name || "The document"} is too large. Keep it under ${window.SNT_HOMEWORK_MAX_PDF_MB || 10} MB.`);
+    }
+  }
+
+  function documentMimeType(file) {
+    const name = String(file.name || "").toLowerCase();
+    if (file.type) return file.type;
+    if (name.endsWith(".pdf")) return "application/pdf";
+    if (name.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (name.endsWith(".doc")) return "application/msword";
+    return "application/octet-stream";
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     clearMessage();
 
+    const chosenGrade = Number(gradeSelect.value || 0);
     const student = studentSelect.value.trim();
     const grade = STUDENTS[student];
     const subject = subjectSelect.value.trim();
     const week = weekSelect.value.trim();
     const text = typedAnswers.value.trim();
     const images = selectedImages.map((item) => ({ ...item }));
+    const documentFile = selectedDocument;
 
-    if (!student || !grade) return showMessage("Choose your name.", true);
+    if (!chosenGrade) return showMessage("Choose your grade.", true);
+    if (!student || !grade || grade !== chosenGrade) return showMessage("Choose your name.", true);
     if (!subject) return showMessage("Choose your subject.", true);
     if (!week) return showMessage("Choose the homework week.", true);
-    if (!text && !images.length) return showMessage("Type answers, take photos, add images, or use a combination.", true);
+    if (!text && !images.length && !documentFile) {
+      return showMessage("Type answers, take photos, add images, or upload a PDF/Word document.", true);
+    }
+    if (documentFile && (text || images.length)) {
+      return showMessage("Please use either the PDF/Word upload OR typed answers/photos for one submission.", true);
+    }
 
     validateImages(images.map((item) => item.file));
+    if (documentFile) validateDocument(documentFile);
 
     try {
+      const today = new Date().toISOString().slice(0, 10);
+      track("submission_attempt", student, grade, subject, week);
+
+      if (documentFile) {
+        setBusy(true, "Preparing document...");
+        const dataUrl = await fileToDataUrl(documentFile);
+        const base64 = dataUrl.split(",")[1] || "";
+        const approxBytes = Math.ceil(base64.length * 3 / 4);
+
+        if (!base64 || approxBytes > maxPdfBytes) {
+          throw new Error(`The document is too large. Keep it under ${window.SNT_HOMEWORK_MAX_PDF_MB || 10} MB.`);
+        }
+
+        setBusy(true, "Sending to Drive...");
+        postToDrive({
+          grade: String(grade),
+          subject,
+          task: week,
+          student,
+          activity_date: today,
+          submission_mode: "document",
+          upload_key: UPLOAD_KEY,
+          visit_id: visitId,
+          file_name: documentFile.name,
+          mime_type: documentMimeType(documentFile),
+          file_base64: base64
+        });
+        return;
+      }
+
       setBusy(true, "Preparing PDF...");
       const pdfData = await buildCombinedPdf({ student, grade, subject, week, text, images });
       const base64 = pdfData.split(",")[1] || "";
@@ -284,8 +419,6 @@
         throw new Error(`The final PDF is too large. Keep it under ${window.SNT_HOMEWORK_MAX_PDF_MB || 10} MB.`);
       }
 
-      const today = new Date().toISOString().slice(0, 10);
-      track("submission_attempt", student, grade, subject, week);
       setBusy(true, "Sending to Drive...");
       postToDrive({
         grade: String(grade),
